@@ -1,0 +1,9 @@
+streamlit
+transformers
+torch
+watchdog
+langchain_huggingface
+langchain-community
+python-dotenv
+openai
+replicate

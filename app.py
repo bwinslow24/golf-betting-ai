@@ -1,92 +1,88 @@
-import base64
-import os
-import re
-import uuid
+# import streamlit as st
+#
+# pages = {
+#     "Your account": [
+#         st.Page("create_account.py", title="Create your account"),
+#         st.Page("manage_account.py", title="Manage your account"),
+#     ],
+#     "Games": [
+#         st.Page("create_game.py", title="Create Game"),
+#         st.Page("my_games.py", title="My Games"),
+#     ],
+# }
+#
+# pg = st.navigation(pages)
+# pg.run()
 
-import replicate
+
 import streamlit as st
-from dotenv import load_dotenv
-from langchain_core.messages import AIMessage, HumanMessage
-from streamlit.components import v1 as components
 
-# from langchain_community.chat_models import ChatPerplexity
-# from langchain_core.messages import SystemMessage, trim_messages, HumanMessage, AIMessage
-#
-# from langchain_core.runnables.history import RunnableWithMessageHistory
-# from langchain_community.chat_message_histories import ChatMessageHistory, StreamlitChatMessageHistory
-#
-# from dotenv import load_dotenv
-# from templates import topic_selection_template, title_selection_template, story_builder_template
-from langchain.chains import LLMChain
-from langchain_community.llms import Replicate
-from langchain_core.prompts import PromptTemplate
+# Initialize session state
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
-load_dotenv()
-st.set_page_config(layout="wide")
-st.title("GoBet AI")
+def login():
+    st.session_state.logged_in = True
 
+def logout():
+    st.session_state.logged_in = False
 
-# initialize app
-def get_system_message():
-    return '''
-        You are a golf betting expert. You know every betting game from skins to lone wolf. You will help the user
-        build a list of rules for the game they have described in the prompt. The result should be a list of game rules
-    '''
+def home():
+    st.title("Welcome to Game Creator")
+    st.write("This is the home page of our awesome game creation app!")
 
+def login_page():
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        # Here you would normally check the credentials
+        # For this example, we'll just log in if both fields are filled
+        if username and password:
+            login()
+            st.success("Logged in successfully!")
+            st.experimental_rerun()
+        else:
+            st.error("Please enter both username and password.")
 
-def write_chat_message(container, message):
-    with container.chat_message(message['text'].type):
-        st.write(message['text'].content)
+def create_game():
+    st.title("Create a New Game")
+    st.write("Here you can create your new game!")
+    # Add your game creation form or logic here
 
+# Sidebar navigation
+def sidebar_nav():
+    with st.sidebar:
+        st.title("Navigation")
+        if st.session_state.logged_in:
+            if st.button("Home"):
+                st.session_state.page = "home"
+            if st.button("Create Game"):
+                st.session_state.page = "create_game"
+            if st.button("Logout"):
+                logout()
+                st.session_state.page = "home"
+                st.experimental_rerun()
+        else:
+            if st.button("Home"):
+                st.session_state.page = "home"
+            if st.button("Login"):
+                st.session_state.page = "login"
 
-def generate_response(prompt):
-    try:
-        # Call Replicate to generate response.
-        input = {
-            "prompt": prompt,
-            "max_new_tokens": 512,
-            "system_prompt": get_system_message()
-            # "prompt_template": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-        }
+# Main app logic
+def main():
+    sidebar_nav()
 
-        for event in replicate.run(
-            "meta/meta-llama-3-8b-instruct",
-            input=input
-        ):
-            yield event
+    if not st.session_state.logged_in:
+        if st.session_state.get('page') == "login":
+            login_page()
+        else:
+            home()
+    else:
+        if st.session_state.get('page') == "create_game":
+            create_game()
+        else:
+            home()
 
-
-        # return {'text': AIMessage(output)}
-    except Exception as err:
-        yield 'Whoops something went wrong...'
-        # Could be game describing mode or could be game results mode
-        # return {'text': AIMessage('Whoops something went wrong...')}
-
-
-chat_col, story_col = st.columns(2)
-# React to user input
-with chat_col:
-    with st.container(height=500):
-        message_container = st.container(height=400)
-        if 'chat_messages' not in st.session_state:
-            starting_message = 'Welcome to GoBet! I can help you automatically reconcile your bets based on the game you describe. What game are you playing today?'
-
-            # message_container.chat_message("ai").write(message_for_chat)
-            st.session_state['chat_messages'] = [{'text': AIMessage(starting_message)}]
-
-        for msg in st.session_state.chat_messages:
-            write_chat_message(container=message_container, message=msg)
-
-        if prompt := st.chat_input():
-            # Add user input to chat messages
-            user_input_message = {'text': HumanMessage(prompt)}
-            write_chat_message(container=message_container, message=user_input_message)
-
-            st.session_state['chat_messages'].append(user_input_message)
-            # generate response for user input
-            with message_container.chat_message('ai'):
-                response = generate_response(prompt=prompt)
-                st.write_stream(response)
-
-            st.session_state['chat_messages'].append({'text': AIMessage(prompt)})
-            # write_chat_message(container=message_container, message=response)
+if __name__ == "__main__":
+    main()
